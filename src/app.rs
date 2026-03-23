@@ -6,14 +6,17 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use ratatui::{style::Stylize, text::ToLine, widgets::Padding, Frame};
 
-use crate::config::Config;
-use crate::page;
+use crate::config::{parameters::ParameterValues, Config, ModeConfig, SourceConfig};
+use crate::page::menu::CreateSessionError;
+use crate::page::{
+    self,
+    session::{Mode, Session},
+};
 use crate::utils::ROUNDED_BLOCK;
 
 const NO_CONFIG_ERROR: &str = r"No modes and/or sources found. 
 Consult the wiki at https://mahlquistj.github.io/octotype/docs/configuration/ for info on how to configure OctoType.";
 
-/// An app message
 pub enum Message {
     /// An error occurred
     Error(Box<dyn std::error::Error + Send>),
@@ -21,6 +24,12 @@ pub enum Message {
     Show(page::Page),
     /// Reset to the main menu
     Reset,
+    /// Restart the session with same settings but new words
+    RestartSession {
+        mode: ModeConfig,
+        source: SourceConfig,
+        parameters: ParameterValues,
+    },
     /// Quit the application
     Quit,
 }
@@ -62,6 +71,19 @@ impl App {
                             page::Menu::new(config).map(|menu| Message::Show(menu.into()))
                         })
                         .into()
+                    }
+                    Message::RestartSession {
+                        mode,
+                        source,
+                        parameters,
+                    } => {
+                        self.page =
+                            page::Loading::load(&self.config, "Loading words...", move |config| {
+                                Session::new(config, mode, source, parameters)
+                                    .map(|session| Message::Show(session.into()))
+                                    .map_err(CreateSessionError::from)
+                            })
+                            .into()
                     }
                     Message::Quit => break,
                 }

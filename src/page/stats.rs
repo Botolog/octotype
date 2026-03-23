@@ -1,18 +1,22 @@
 use std::collections::BTreeMap;
 
 use crossterm::event::{Event, KeyCode};
-use gladius::{CharacterResult, statistics::Statistics};
+use gladius::{statistics::Statistics, CharacterResult};
 use ratatui::{
-    Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span, ToSpan},
     widgets::{
         Axis, Block, Borders, Chart, Dataset, GraphType, LegendPosition, Padding, Paragraph,
     },
+    Frame,
 };
 
-use crate::{app::Message, config::Config, utils::ROUNDED_BLOCK};
+use crate::{
+    app::Message,
+    config::{parameters::ParameterValues, Config, ModeConfig, SourceConfig},
+    utils::ROUNDED_BLOCK,
+};
 
 type PlotData = Vec<(f64, f64)>;
 
@@ -27,6 +31,9 @@ pub struct Stats {
     wpm_low: f64,
     wpm_high: f64,
     char_errors: BTreeMap<usize, Vec<char>>,
+    restart_mode: Option<ModeConfig>,
+    restart_source: Option<SourceConfig>,
+    restart_parameters: Option<ParameterValues>,
 }
 
 #[derive(Debug, Clone)]
@@ -95,7 +102,24 @@ impl From<Statistics> for Stats {
             wpm_low,
             wpm_high,
             char_errors,
+            restart_mode: None,
+            restart_source: None,
+            restart_parameters: None,
         }
+    }
+}
+
+impl Stats {
+    pub fn with_restart(
+        mut self,
+        mode: ModeConfig,
+        source: SourceConfig,
+        parameters: ParameterValues,
+    ) -> Self {
+        self.restart_mode = Some(mode);
+        self.restart_source = Some(source);
+        self.restart_parameters = Some(parameters);
+        self
     }
 }
 
@@ -268,14 +292,31 @@ impl Stats {
     }
 
     pub fn render_top(&self, _config: &Config) -> Option<Line<'_>> {
-        Some(Line::raw("<Enter> to go back to the menu"))
+        if self.restart_mode.is_some() {
+            Some(Line::raw("<Enter> to go back to menu | <R> to restart"))
+        } else {
+            Some(Line::raw("<Enter> to go back to the menu"))
+        }
     }
 
     pub fn handle_events(&self, event: &Event, _config: &Config) -> Option<Message> {
-        if let Event::Key(key) = event
-            && key.code == KeyCode::Enter
-        {
-            return Some(Message::Reset);
+        if let Event::Key(key) = event {
+            if key.code == KeyCode::Enter {
+                return Some(Message::Reset);
+            }
+            if key.code == KeyCode::Char('r') || key.code == KeyCode::Char('R') {
+                if let (Some(mode), Some(source), Some(parameters)) = (
+                    self.restart_mode.clone(),
+                    self.restart_source.clone(),
+                    self.restart_parameters.clone(),
+                ) {
+                    return Some(Message::RestartSession {
+                        mode,
+                        source,
+                        parameters,
+                    });
+                }
+            }
         }
 
         None

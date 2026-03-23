@@ -15,7 +15,7 @@ use thiserror::Error;
 use crate::{
     config::{
         Config, ModeConfig, SourceConfig,
-        parameters::{Definition, Parameter},
+        parameters::{Definition, Parameter, ParameterValues},
     },
     page::session::{CreateModeError, FetchError, Mode},
     utils::{center, centered_padding},
@@ -355,12 +355,11 @@ impl Menu {
     }
 
     fn create_session(&self, config: &Config) -> Option<Message> {
-        let mode = *self.context.selected_mode.as_ref().unwrap().clone();
-        let source = *self.context.selected_source.as_ref().unwrap().clone();
-        let parameters = self.context.parameters.iter().cloned().collect();
+        let mode_config = *self.context.selected_mode.as_ref().unwrap().clone();
+        let source_config = *self.context.selected_source.as_ref().unwrap().clone();
+        let parameters: ParameterValues = self.context.parameters.iter().cloned().collect();
         let session_loader = Loading::load(config, "Loading words...", move |config| {
-            let mode = Mode::from_config(config, mode, source, parameters).map_err(Box::new)?;
-            Session::new(config, mode)
+            Session::new(config, mode_config.clone(), source_config.clone(), parameters.clone())
                 .map(|session| Message::Show(session.into()))
                 .map_err(CreateSessionError::from)
         });

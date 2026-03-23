@@ -13,7 +13,7 @@ use ratatui::{
 };
 
 use crate::{
-    config::Config,
+    config::{Config, ModeConfig, SourceConfig, parameters::ParameterValues},
     page::{self},
     utils::{center, centered_padding, fade, height_of_lines},
 };
@@ -33,11 +33,22 @@ pub struct Session {
     gladius_session: TypingSession,
     fetch_buffer: Option<String>,
     mode: Mode,
+    mode_config: ModeConfig,
+    source_config: SourceConfig,
+    parameters: ParameterValues,
 }
 
 impl Session {
     /// Creates a new `TypingSession`
-    pub fn new(config: &Config, mut mode: Mode) -> Result<Self, FetchError> {
+    pub fn new(
+        config: &Config,
+        mode_config: ModeConfig,
+        source_config: SourceConfig,
+        parameters: ParameterValues,
+    ) -> Result<Self, FetchError> {
+        let mut mode = Mode::from_config(config, mode_config.clone(), source_config.clone(), parameters.clone())
+            .map_err(|e| FetchError::SourceError(e.to_string()))?;
+
         let mut text = mode.source.fetch()?;
 
         if let Some(target) = mode.conditions.words_typed {
@@ -53,6 +64,9 @@ impl Session {
             gladius_session,
             fetch_buffer: None,
             mode,
+            mode_config,
+            source_config,
+            parameters,
         })
     }
 }
@@ -287,7 +301,11 @@ impl Session {
                 return Some(Message::Error(Box::new(error)));
             }
 
-            return Some(Message::Show(page::Stats::from(statistics).into()));
+            return Some(Message::Show(
+                page::Stats::from(statistics)
+                    .with_restart(self.mode_config.clone(), self.source_config.clone(), self.parameters.clone())
+                    .into(),
+            ));
         }
 
         if let Err(error) = self.fetch_new_text() {

@@ -26,6 +26,7 @@ pub enum ParameterError {
     DefaultNonExistant,
 }
 
+#[derive(Clone, Debug)]
 pub struct ParameterValues(HashMap<String, Parameter>);
 
 impl ParameterValues {
