@@ -37,10 +37,16 @@ pub struct Session {
 
 impl Session {
     /// Creates a new `TypingSession`
-    pub fn new(_config: &Config, mut mode: Mode) -> Result<Self, FetchError> {
-        let text = mode.source.fetch()?;
-        // Safety: Sources already check for empty output - This is the only error that can happen
-        // when initializing a TypingSession
+    pub fn new(config: &Config, mut mode: Mode) -> Result<Self, FetchError> {
+        let mut text = mode.source.fetch()?;
+
+        if let Some(target) = mode.conditions.words_typed {
+            let words: Vec<&str> = text.split_whitespace().collect();
+            if words.len() > target {
+                text = words[..target].join(" ");
+            }
+        }
+
         let gladius_session = TypingSession::new(&text).expect("Failed to create TypingSession");
 
         Ok(Self {
@@ -78,15 +84,22 @@ impl Session {
         }
 
         if let Some(target) = self.mode.conditions.words_typed {
-            return self.gladius_session.words_typed_count() == target;
+            let words = self.gladius_session.words_typed_count();
+            if words >= target {
+                return true;
+            }
         }
 
         if let Some(max_time) = self.mode.conditions.time {
-            return self.gladius_session.time_elapsed() > max_time.as_secs_f64();
+            if self.gladius_session.time_elapsed() > max_time.as_secs_f64() {
+                return true;
+            }
         }
 
         if !self.mode.conditions.allow_errors {
-            return self.gladius_session.statistics().counters.errors > 0;
+            if self.gladius_session.statistics().counters.errors > 0 {
+                return true;
+            }
         }
 
         false

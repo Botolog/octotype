@@ -4,7 +4,7 @@ use std::time::Duration;
 use crossterm::cursor::SetCursorStyle;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
-use ratatui::{Frame, style::Stylize, text::ToLine, widgets::Padding};
+use ratatui::{style::Stylize, text::ToLine, widgets::Padding, Frame};
 
 use crate::config::Config;
 use crate::page;
@@ -95,16 +95,21 @@ impl App {
 
     /// Global event handler
     fn handle_events(&mut self, event_opt: Option<Event>) -> Option<Message> {
-        event_opt
-            .and_then(|event| {
-                self.page.handle_events(&event, &self.config).or_else(|| {
-                    match event {
-                        Event::Key(key) => self.handle_key_event(key),
-                        _ => None, // Reserved for future event handling
-                    }
-                })
-            })
-            .or_else(|| self.page.poll(&self.config))
+        if let Some(message) = self.page.poll(&self.config) {
+            return Some(message);
+        }
+
+        if let Some(event) = event_opt {
+            return self
+                .page
+                .handle_events(&event, &self.config)
+                .or_else(|| match event {
+                    Event::Key(key) => self.handle_key_event(key),
+                    _ => None,
+                });
+        }
+
+        None
     }
 
     /// Global key events
