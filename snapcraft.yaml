@@ -13,16 +13,13 @@ architectures:
 
 parts:
   octotype:
-    plugin: rust
+    plugin: nil
     source: .
-    rust-channel: stable
-    build-packages:
-      - libssl-dev
-    stage-packages:
-      - libssl3
+    override-pull: |
+      echo "Skipping pull, using pre-built binary"
     override-build: |
-      cargo build --release --locked
-      install -Dm755 target/release/octotype -t $SNAPCRAFT_PART_INSTALL/usr/bin/
+      echo "Using pre-built binary"
+      install -Dm755 ./target/release/octotype -t $SNAPCRAFT_PART_INSTALL/usr/bin/
 
 apps:
   octotype:

@@ -26,17 +26,11 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Download pre-built executable (if available)
-        if: ${{ inputs.use-prebuilt-executable }}
-        uses: actions/download-artifact@v4
-        with:
-          name: cli-executable
-          path: .
-        continue-on-error: true
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Mark executable
-        if: ${{ inputs.use-prebuilt-executable }}
-        run: chmod +x ./octotype || true
+      - name: Build Rust binary
+        run: cargo build --release
 
       - name: Install snapcraft and dependencies
         run: |
