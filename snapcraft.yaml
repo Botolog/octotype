@@ -13,13 +13,13 @@ architectures:
 
 parts:
   octotype:
-    plugin: nil
+    plugin: dump
     source: .
-    override-pull: |
-      echo "Skipping pull, using pre-built binary"
-    override-build: |
-      echo "Using pre-built binary"
-      install -Dm755 ./target/release/octotype -t $SNAPCRAFT_PART_INSTALL/usr/bin/
+    source-type: local
+    stage:
+      - usr/
+    prime:
+      - usr/
 
 apps:
   octotype:

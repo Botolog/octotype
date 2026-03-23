@@ -41,6 +41,10 @@ jobs:
       - name: Build snap package
         id: build-snap
         run: |
+          # Create directory structure for snapcraft dump plugin
+          mkdir -p usr/bin
+          cp target/release/octotype usr/bin/
+          
           echo "Building snap package with destructive mode..."
           snapcraft pack --destructive-mode
           SNAP_FILE=$(ls *.snap 2>/dev/null | head -1)
