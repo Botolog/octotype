@@ -109,7 +109,7 @@ impl App {
         let mut block = ROUNDED_BLOCK
             .padding(Padding::new(1, 1, 0, 0))
             .title_top("OCTOTYPE".to_line().bold().centered())
-            .title_top("<CTRL-Q> to exit".to_line().right_aligned());
+            .title_top("<CTRL-Q/CTRL-C> to exit".to_line().right_aligned());
 
         if let Some(top_msg) = self.page.render_top(&self.config) {
             block = block.title_top(top_msg);
@@ -146,6 +146,7 @@ impl App {
     const fn handle_key_event(&self, key: KeyEvent) -> Option<Message> {
         match (key.code, key.modifiers) {
             (KeyCode::Char('q'), KeyModifiers::CONTROL) => Some(Message::Quit),
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => Some(Message::Quit),
             (KeyCode::Esc, KeyModifiers::NONE) => Some(Message::Reset),
             _ => None,
         }

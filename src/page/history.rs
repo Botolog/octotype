@@ -379,7 +379,7 @@ impl History {
     pub fn render_top(&self, _config: &Config) -> Option<Line<'_>> {
         match self.view_mode {
             ViewMode::List => Some(Line::raw(
-                "<Enter> menu | <Tab> trends | <Up/Down> navigate | <Delete> delete",
+                "<Enter> menu | <Tab> trends | <Up/Down> navigate | <D/d> delete",
             )),
             ViewMode::Trends => Some(Line::raw("<Enter> menu | <Tab> list view")),
         }
@@ -391,7 +391,7 @@ impl History {
         {
             match key.code {
                 KeyCode::Enter => return Some(Message::Reset),
-                KeyCode::Delete => {
+                KeyCode::Delete | KeyCode::Char('d') | KeyCode::Char('D') => {
                     if let Some(session) = self.get_selected_session().cloned() {
                         if let Some(stats_manager) = &config.statistics_manager {
                             let _ = stats_manager.delete_session(&session);

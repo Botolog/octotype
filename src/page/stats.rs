@@ -288,7 +288,7 @@ impl Stats {
 
     pub fn render_top(&self, _config: &Config) -> Option<Line<'_>> {
         if self.restart_mode.is_some() {
-            Some(Line::raw("<Enter> menu | <R> restart | <Del> delete"))
+            Some(Line::raw("<Enter> menu | <R> restart | <D/d> delete"))
         } else {
             Some(Line::raw("<Enter> to go back to the menu"))
         }
@@ -312,7 +312,10 @@ impl Stats {
                     });
                 }
             }
-            if key.code == KeyCode::Delete {
+            if key.code == KeyCode::Delete
+                || key.code == KeyCode::Char('d')
+                || key.code == KeyCode::Char('D')
+            {
                 if let Some(session) = &self.saved_session {
                     if let Some(stats_manager) = &config.statistics_manager {
                         let _ = stats_manager.delete_session(session);
