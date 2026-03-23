@@ -291,6 +291,12 @@ impl Session {
 
             // Save statistics if enabled
             let saved_session = if let Some(stats_manager) = &config.statistics_manager {
+                use chrono::{DateTime, Local};
+                
+                let now = web_time::SystemTime::now();
+                let datetime: DateTime<Local> = now.into();
+                let date_str = datetime.format("%d/%m/%y %H:%M").to_string();
+                
                 let session_stats = crate::statistics::SessionStatistics {
                     timestamp: web_time::SystemTime::now(),
                     session_id: format!("{:?}", web_time::SystemTime::now()),
@@ -301,6 +307,7 @@ impl Session {
                         words_typed_limit: self.mode.conditions.words_typed,
                         allow_deletions: self.mode.conditions.allow_deletions,
                         allow_errors: self.mode.conditions.allow_errors,
+                        date: date_str,
                     },
                     statistics: crate::statistics::SerializableStatistics::from(&statistics),
                 };

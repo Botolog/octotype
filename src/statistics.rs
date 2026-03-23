@@ -1,11 +1,13 @@
 use gladius::statistics::Statistics;
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
 use web_time::SystemTime;
 
 use crate::page::session::Mode;
+use chrono::{DateTime, Local};
 
 #[derive(Debug, Error)]
 pub enum StatisticsError {
@@ -38,6 +40,7 @@ pub struct SessionConfig {
     pub words_typed_limit: Option<usize>,
     pub allow_deletions: bool,
     pub allow_errors: bool,
+    pub date: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,10 +57,18 @@ pub struct SerializableStatistics {
     pub corrections: usize,
     pub deletes: usize,
     pub wrong_deletes: usize,
+    pub char_errors: HashMap<char, usize>,
 }
 
 impl From<&Statistics> for SerializableStatistics {
     fn from(stats: &Statistics) -> Self {
+        let char_errors: HashMap<char, usize> = stats
+            .counters
+            .char_errors
+            .iter()
+            .map(|(c, count)| (*c, *count))
+            .collect();
+
         Self {
             duration: stats.duration.as_secs_f64(),
             wpm_actual: stats.wpm.actual,
@@ -71,12 +82,17 @@ impl From<&Statistics> for SerializableStatistics {
             corrections: stats.counters.corrections,
             deletes: stats.counters.deletes,
             wrong_deletes: stats.counters.wrong_deletes,
+            char_errors,
         }
     }
 }
 
 impl SessionConfig {
     pub fn from_mode(mode: &Mode, mode_name: String, source_name: String) -> Self {
+        let now = SystemTime::now();
+        let datetime: DateTime<Local> = now.into();
+        let date = datetime.format("%d/%m/%y %H:%M").to_string();
+
         Self {
             mode_name,
             source_name,
@@ -84,6 +100,7 @@ impl SessionConfig {
             words_typed_limit: mode.conditions.words_typed,
             allow_deletions: mode.conditions.allow_deletions,
             allow_errors: mode.conditions.allow_errors,
+            date,
         }
     }
 }

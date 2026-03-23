@@ -147,6 +147,7 @@ impl History {
             let settings = vec![
                 Line::from(format!("Mode: {}", session.session_config.mode_name)),
                 Line::from(format!("Source: {}", session.session_config.source_name)),
+                Line::from(format!("Date: {}", session.session_config.date)),
                 Line::from(format!(
                     "Deletions: {}",
                     if session.session_config.allow_deletions {
@@ -199,11 +200,20 @@ impl History {
                 Line::from(format!("Total Added: {}", session.statistics.adds)),
             ];
 
+            let char_errors: Vec<Line> = session
+                .statistics
+                .char_errors
+                .iter()
+                .map(|(c, count)| {
+                    Line::from(format!("{}: {}", c, count))
+                })
+                .collect();
+
             let outer_block = ROUNDED_BLOCK.title("Session Details".to_span().bold());
             let inner_area = outer_block.inner(detail_area);
 
-            let [settings_area, stats_area] =
-                Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+            let [settings_area, stats_area, char_area] =
+                Layout::horizontal([Constraint::Percentage(35), Constraint::Percentage(35), Constraint::Percentage(30)])
                     .areas(inner_area);
 
             frame.render_widget(outer_block, detail_area);
@@ -217,6 +227,11 @@ impl History {
                     .block(Block::new().title(Span::from("Stats").bold().underlined())),
                 stats_area,
             );
+            frame.render_widget(
+                Paragraph::new(char_errors)
+                    .block(Block::new().title(Span::from("Char Errors").bold().underlined())),
+                char_area,
+            );
         }
     }
 
@@ -229,8 +244,13 @@ impl History {
             return;
         }
 
+        let [charts_area, char_errors_area] =
+            Layout::horizontal([Constraint::Percentage(85), Constraint::Length(16)])
+                .areas(area);
+
         let [wpm_area, accuracy_area] =
-            Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(area);
+            Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .areas(charts_area);
 
         // Prepare data for charts - reverse to show chronological order
         let mut wpm_data = Vec::new();
@@ -313,6 +333,35 @@ impl History {
             .legend_position(Some(LegendPosition::BottomLeft));
 
         frame.render_widget(accuracy_chart, accuracy_area);
+
+        // Aggregated character errors
+        let mut aggregated_errors: std::collections::HashMap<char, usize> = std::collections::HashMap::new();
+        for session in &self.sessions {
+            for (c, count) in &session.statistics.char_errors {
+                *aggregated_errors.entry(*c).or_insert(0) += *count;
+            }
+        }
+
+        let mut sorted_errors: Vec<(&char, &usize)> = aggregated_errors.iter().collect();
+        sorted_errors.sort_by(|a, b| {
+            match b.1.cmp(a.1) {
+                std::cmp::Ordering::Equal => a.0.cmp(b.0),
+                other => other,
+            }
+        });
+
+        let total_errors: usize = aggregated_errors.values().sum();
+        
+        let char_lines: Vec<Line> = std::iter::once(Line::from(format!("Total: {}", total_errors)))
+            .chain(sorted_errors.iter().map(|(c, count)| {
+                Line::from(format!("{}: {}", c, count))
+            }))
+            .collect();
+
+        let char_errors_widget = Paragraph::new(char_lines)
+            .block(ROUNDED_BLOCK.title("All-time Errors".to_span().bold()));
+
+        frame.render_widget(char_errors_widget, char_errors_area);
     }
 }
 

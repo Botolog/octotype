@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crossterm::event::{Event, KeyCode};
 use gladius::{statistics::Statistics, CharacterResult};
@@ -31,7 +31,7 @@ pub struct Stats {
     datasets: DataSets,
     wpm_low: f64,
     wpm_high: f64,
-    char_errors: BTreeMap<usize, Vec<char>>,
+    char_errors: HashMap<char, usize>,
     restart_mode: Option<ModeConfig>,
     restart_source: Option<SourceConfig>,
     restart_parameters: Option<ParameterValues>,
@@ -86,17 +86,12 @@ impl From<Statistics> for Stats {
             consistency,
         };
 
-        let mut char_errors = BTreeMap::new();
-        value
+        let char_errors: HashMap<char, usize> = value
             .counters
             .char_errors
             .iter()
-            .for_each(|(character, count)| {
-                char_errors
-                    .entry(*count)
-                    .and_modify(|chars: &mut Vec<char>| chars.push(*character))
-                    .or_insert_with(|| vec![*character]);
-            });
+            .map(|(c, count)| (*c, *count))
+            .collect();
 
         Self {
             gladius_stats: value,
@@ -274,16 +269,11 @@ impl Stats {
         let character_lines: Vec<Line> = self
             .char_errors
             .iter()
-            .flat_map(|(fails, chars)| {
-                chars
-                    .iter()
-                    .map(|c| {
-                        Line::default().spans(vec![
-                            c.to_span().style(Style::new().bold()),
-                            Span::from(format!(": {fails}")),
-                        ])
-                    })
-                    .collect::<Vec<Line>>()
+            .map(|(c, count)| {
+                Line::default().spans(vec![
+                    c.to_span().style(Style::new().bold()),
+                    Span::from(format!(": {count}")),
+                ])
             })
             .collect();
 
