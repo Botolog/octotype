@@ -96,6 +96,8 @@ impl App {
                     Message::Quit => break,
                 }
             }
+
+            std::thread::sleep(std::time::Duration::from_millis(16));
             terminal.draw(|frame| self.draw(frame))?;
         }
 
