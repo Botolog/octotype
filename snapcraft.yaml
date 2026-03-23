@@ -1,0 +1,29 @@
+name: octotype
+version: 0.8.0
+summary: A typing trainer for your terminal
+description: |
+  OctoType is a TUI typing trainer made with Ratatui, powered by Gladius.
+  Heavily inspired by Monkeytype, with a focus on customizability.
+grade: stable
+confinement: classic
+base: core22
+
+architectures:
+  - build-on: amd64
+
+parts:
+  octotype:
+    plugin: rust
+    source: .
+    rust-channel: stable
+    build-packages:
+      - libssl-dev
+    stage-packages:
+      - libssl3
+    override-build: |
+      cargo build --release --locked
+      install -Dm755 target/release/octotype -t $SNAPCRAFT_PART_INSTALL/usr/bin/
+
+apps:
+  octotype:
+    command: usr/bin/octotype

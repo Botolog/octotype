@@ -1,0 +1,20 @@
+name: CI — Snap Edge
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-snap:
+    name: "Build Snap Package"
+    uses: ./.github/workflows/build-snap.yml
+
+  publish-edge:
+    name: "Publish to Snap Store (edge)"
+    needs: build-snap
+    uses: ./.github/workflows/publish-snap.yml
+    with:
+      snap-filename: ${{ needs.build-snap.outputs.snap-filename }}
+      channel: edge
+    secrets:
+      SNAPCRAFT_TOKEN: ${{ secrets.SNAPCRAFT_TOKEN }}

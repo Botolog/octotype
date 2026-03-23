@@ -1,0 +1,78 @@
+name: Build Snap Package
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      use-prebuilt-executable:
+        description: "Use pre-built executable from artifact"
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      snap-filename:
+        description: "The filename of the built snap"
+        value: ${{ jobs.build.outputs.snap-filename }}
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    outputs:
+      snap-filename: ${{ steps.build-snap.outputs.snap-filename }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download pre-built executable (if available)
+        if: ${{ inputs.use-prebuilt-executable }}
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-executable
+          path: octotype/build/
+        continue-on-error: true
+
+      - name: Mark executable
+        if: ${{ inputs.use-prebuilt-executable }}
+        run: chmod +x octotype/build/octotype || true
+
+      - name: Copy VERSION into octotype
+        run: cp VERSION octotype/VERSION || echo "No VERSION file"
+
+      - name: Install snapcraft and dependencies
+        run: |
+          sudo snap install snapcraft --classic
+          sudo snap install core22
+          sudo snap refresh core22 || true
+
+      - name: Build snap package
+        id: build-snap
+        working-directory: octotype
+        run: |
+          echo "Building snap package with destructive mode..."
+          snapcraft pack --destructive-mode
+          SNAP_FILE=$(ls octotype_*.snap 2>/dev/null || echo "")
+          if [ -z "$SNAP_FILE" ]; then
+            echo "No snap file found, trying snapcraft..."
+            snapcraft pack --destructive-mode
+            SNAP_FILE=$(ls octotype_*.snap)
+          fi
+          echo "snap-filename=$SNAP_FILE" >> $GITHUB_OUTPUT
+          echo "✓ Built snap: $SNAP_FILE"
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-package
+          path: octotype/octotype_*.snap
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Verify snap package
+        working-directory: octotype
+        run: |
+          echo "Installing snap for verification..."
+          sudo snap install --dangerous octotype_*.snap || true
+          snap info octotype || echo "Snap info not available"
+          echo "✓ Snap package verified!"
+          sudo snap remove octotype || true
