@@ -330,18 +330,29 @@ impl History {
     pub fn render_top(&self, _config: &Config) -> Option<Line<'_>> {
         match self.view_mode {
             ViewMode::List => Some(Line::raw(
-                "<Enter> menu | <Tab> trends | <Up/Down> navigate",
+                "<Enter> menu | <Tab> trends | <Up/Down> navigate | <Delete> delete",
             )),
             ViewMode::Trends => Some(Line::raw("<Enter> menu | <Tab> list view")),
         }
     }
 
-    pub fn handle_events(&mut self, event: &Event, _config: &Config) -> Option<Message> {
+    pub fn handle_events(&mut self, event: &Event, config: &Config) -> Option<Message> {
         if let Event::Key(key) = event
             && key.is_press()
         {
             match key.code {
                 KeyCode::Enter => return Some(Message::Reset),
+                KeyCode::Delete => {
+                    if let Some(session) = self.get_selected_session().cloned() {
+                        if let Some(stats_manager) = &config.statistics_manager {
+                            let _ = stats_manager.delete_session(&session);
+                            self.sessions.remove(self.selected_index);
+                            if self.selected_index >= self.sessions.len() {
+                                self.selected_index = self.sessions.len().saturating_sub(1);
+                            }
+                        }
+                    }
+                }
                 KeyCode::Tab => {
                     self.view_mode = match self.view_mode {
                         ViewMode::List => ViewMode::Trends,

@@ -290,20 +290,43 @@ impl Session {
             let statistics = self.gladius_session.clone().finalize();
 
             // Save statistics if enabled
-            if let Some(stats_manager) = &config.statistics_manager
-                && let Err(error) = stats_manager.save_session(
+            let saved_session = if let Some(stats_manager) = &config.statistics_manager {
+                let session_stats = crate::statistics::SessionStatistics {
+                    timestamp: web_time::SystemTime::now(),
+                    session_id: format!("{:?}", web_time::SystemTime::now()),
+                    session_config: crate::statistics::SessionConfig {
+                        mode_name: self.mode.mode_name.clone(),
+                        source_name: self.mode.source_name.clone(),
+                        time_limit: self.mode.conditions.time.map(|d| d.as_secs_f64()),
+                        words_typed_limit: self.mode.conditions.words_typed,
+                        allow_deletions: self.mode.conditions.allow_deletions,
+                        allow_errors: self.mode.conditions.allow_errors,
+                    },
+                    statistics: crate::statistics::SerializableStatistics::from(&statistics),
+                };
+
+                if let Err(error) = stats_manager.save_session(
                     &self.mode,
                     self.mode.mode_name.clone(),
                     self.mode.source_name.clone(),
                     &statistics,
-                )
-            {
-                return Some(Message::Error(Box::new(error)));
-            }
+                ) {
+                    return Some(Message::Error(Box::new(error)));
+                }
+
+                Some(session_stats)
+            } else {
+                None
+            };
 
             return Some(Message::Show(
                 page::Stats::from(statistics)
-                    .with_restart(self.mode_config.clone(), self.source_config.clone(), self.parameters.clone())
+                    .with_restart(
+                        self.mode_config.clone(),
+                        self.source_config.clone(),
+                        self.parameters.clone(),
+                    )
+                    .with_saved_session(saved_session)
                     .into(),
             ));
         }

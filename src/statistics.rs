@@ -175,4 +175,22 @@ impl StatisticsManager {
             })
             .collect())
     }
+
+    pub fn delete_session(&self, session: &SessionStatistics) -> Result<(), StatisticsError> {
+        let filename = format!(
+            "session_{}.json",
+            session
+                .timestamp
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+        );
+        let file_path = self.directory.join(filename);
+
+        if file_path.exists() {
+            fs::remove_file(file_path).map_err(StatisticsError::WriteFile)?;
+        }
+
+        Ok(())
+    }
 }

@@ -12,6 +12,7 @@ use crate::page::{
     self,
     session::{Mode, Session},
 };
+use crate::statistics::SessionStatistics;
 use crate::utils::ROUNDED_BLOCK;
 
 const NO_CONFIG_ERROR: &str = r"No modes and/or sources found. 
@@ -30,6 +31,8 @@ pub enum Message {
         source: SourceConfig,
         parameters: ParameterValues,
     },
+    /// Delete a session from history
+    DeleteSession(SessionStatistics),
     /// Quit the application
     Quit,
 }
@@ -84,6 +87,11 @@ impl App {
                                     .map_err(CreateSessionError::from)
                             })
                             .into()
+                    }
+                    Message::DeleteSession(session) => {
+                        if let Some(stats_manager) = &self.config.statistics_manager {
+                            let _ = stats_manager.delete_session(&session);
+                        }
                     }
                     Message::Quit => break,
                 }

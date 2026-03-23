@@ -15,6 +15,7 @@ use ratatui::{
 use crate::{
     app::Message,
     config::{parameters::ParameterValues, Config, ModeConfig, SourceConfig},
+    statistics::SessionStatistics,
     utils::ROUNDED_BLOCK,
 };
 
@@ -34,6 +35,7 @@ pub struct Stats {
     restart_mode: Option<ModeConfig>,
     restart_source: Option<SourceConfig>,
     restart_parameters: Option<ParameterValues>,
+    saved_session: Option<SessionStatistics>,
 }
 
 #[derive(Debug, Clone)]
@@ -105,6 +107,7 @@ impl From<Statistics> for Stats {
             restart_mode: None,
             restart_source: None,
             restart_parameters: None,
+            saved_session: None,
         }
     }
 }
@@ -121,10 +124,12 @@ impl Stats {
         self.restart_parameters = Some(parameters);
         self
     }
-}
 
-// Rendering logic
-impl Stats {
+    pub fn with_saved_session(mut self, session: Option<SessionStatistics>) -> Self {
+        self.saved_session = session;
+        self
+    }
+
     pub fn render(&self, frame: &mut Frame, area: Rect, config: &Config) {
         let [text, charts] =
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
@@ -293,13 +298,13 @@ impl Stats {
 
     pub fn render_top(&self, _config: &Config) -> Option<Line<'_>> {
         if self.restart_mode.is_some() {
-            Some(Line::raw("<Enter> to go back to menu | <R> to restart"))
+            Some(Line::raw("<Enter> menu | <R> restart | <Del> delete"))
         } else {
             Some(Line::raw("<Enter> to go back to the menu"))
         }
     }
 
-    pub fn handle_events(&self, event: &Event, _config: &Config) -> Option<Message> {
+    pub fn handle_events(&self, event: &Event, config: &Config) -> Option<Message> {
         if let Event::Key(key) = event {
             if key.code == KeyCode::Enter {
                 return Some(Message::Reset);
@@ -315,6 +320,13 @@ impl Stats {
                         source,
                         parameters,
                     });
+                }
+            }
+            if key.code == KeyCode::Delete {
+                if let Some(session) = &self.saved_session {
+                    if let Some(stats_manager) = &config.statistics_manager {
+                        let _ = stats_manager.delete_session(session);
+                    }
                 }
             }
         }
