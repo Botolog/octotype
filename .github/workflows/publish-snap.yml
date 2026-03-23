@@ -35,12 +35,8 @@ jobs:
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
         run: |
-          SNAP_FILE="${{ inputs.snap-filename }}"
+          SNAP_FILE=$(ls *.snap | head -1)
           CHANNEL="${{ inputs.channel }}"
-          # Find the actual snap file
-          if [ "$SNAP_FILE" = "octotype_*.snap" ]; then
-            SNAP_FILE=$(ls octotype_*.snap)
-          fi
           echo "Publishing $SNAP_FILE to $CHANNEL channel..."
           snapcraft upload --release=$CHANNEL $SNAP_FILE
           echo "✓ Successfully published to $CHANNEL!"
