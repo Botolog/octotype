@@ -36,6 +36,8 @@ pub struct Session {
     mode_config: ModeConfig,
     source_config: SourceConfig,
     parameters: ParameterValues,
+    expected_char: Option<char>,
+    char_errors: std::collections::HashMap<char, usize>,
 }
 
 impl Session {
@@ -67,6 +69,8 @@ impl Session {
             mode_config,
             source_config,
             parameters,
+            expected_char: None,
+            char_errors: std::collections::HashMap::new(),
         })
     }
 }
@@ -122,9 +126,10 @@ impl Session {
 
 // Rendering logic
 impl Session {
-    pub fn render(&self, frame: &mut Frame, area: Rect, config: &Config) {
+    pub fn render(&mut self, frame: &mut Frame, area: Rect, config: &Config) {
         let mut cursor_position: Option<(u16, u16)> = None;
         let mut current_line = 0u16;
+        let mut new_expected_char: Option<char> = None;
 
         let [_, text_area, gauges_area] = Layout::vertical([
             Constraint::Percentage(20),
@@ -158,6 +163,11 @@ impl Session {
                     .map(|ctx| {
                         let mut style = Style::new().fg(foreground);
                         let is_space = ctx.character.char == ' ';
+
+                        if ctx.has_cursor {
+                            new_expected_char = Some(ctx.character.char);
+                            cursor_position = Some((current_col, current_line));
+                        }
 
                         style = match ctx.character.state {
                             State::Correct => style.fg(success),
@@ -195,6 +205,10 @@ impl Session {
             },
             LineRenderConfig::new(text_area.width as usize).with_newline_breaking(true),
         );
+
+        if let Some(c) = new_expected_char {
+            self.expected_char = Some(c);
+        }
 
         let height = height_of_lines(&lines, text_area);
         let padding = centered_padding(text_area, Some(height), Some(longest_line as u16));
@@ -334,6 +348,7 @@ impl Session {
                         self.parameters.clone(),
                     )
                     .with_saved_session(saved_session)
+                    .with_char_errors(std::mem::take(&mut self.char_errors))
                     .into(),
             ));
         }
@@ -351,6 +366,12 @@ impl Session {
         {
             match key.code {
                 KeyCode::Char(character) => {
+                    if let Some(expected) = self.expected_char {
+                        if expected != character {
+                            *self.char_errors.entry(expected).or_insert(0) += 1;
+                        }
+                    }
+                    self.expected_char = None;
                     self.gladius_session.input(Some(character));
                 }
                 KeyCode::Backspace if self.mode.conditions.allow_deletions => {

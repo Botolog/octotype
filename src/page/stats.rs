@@ -125,6 +125,11 @@ impl Stats {
         self
     }
 
+    pub fn with_char_errors(mut self, errors: std::collections::HashMap<char, usize>) -> Self {
+        self.char_errors = errors;
+        self
+    }
+
     pub fn render(&self, frame: &mut Frame, area: Rect, config: &Config) {
         let [text, charts] =
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])

@@ -1,5 +1,5 @@
 name: octotype
-version: 0.9.0
+version: 0.9.1
 summary: A typing trainer for your terminal
 description: |
   OctoType is a TUI typing trainer made with Ratatui, powered by Gladius.
